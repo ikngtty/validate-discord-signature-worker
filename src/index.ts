@@ -13,6 +13,16 @@
 
 export default {
 	async fetch(request, env, ctx): Promise<Response> {
+		// Authorize.
+		// HACK: This is too simple.
+		// If the token is leaked and be regenerated, all applications that
+		// use this service must change their settings.
+		// Separete tokens for each application is better.
+		const authToken = request.headers.get("x-auth-token");
+		if (authToken !== env.AUTH_TOKEN) {
+			return new Response("Unauthorized.", { status: 401 });
+		}
+
 		return new Response('Hello World!');
 	},
 } satisfies ExportedHandler<Env>;
