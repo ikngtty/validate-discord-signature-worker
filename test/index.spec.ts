@@ -17,7 +17,7 @@ describe('Hello World worker', () => {
 				"x-auth-token": "WrongToken",
 			},
 		});
-		expect(response.status).toEqual(401);
+		expect(response.status).toBe(401);
 		expect(await response.text()).toMatchInlineSnapshot(`"Unauthorized."`);
 	});
 });
