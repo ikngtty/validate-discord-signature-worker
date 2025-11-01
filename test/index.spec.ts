@@ -12,7 +12,7 @@ describe('Hello World worker', () => {
 		expect(await response.text()).toMatchInlineSnapshot(`"Hello World!"`);
 	});
 
-	it('refuse a wrong token', async () => {
+	it('refuses a wrong token', async () => {
 		const response = await SELF.fetch('https://example.com', {
 			headers: {
 				"x-auth-token": "WrongToken",
