@@ -8,6 +8,7 @@ describe('Hello World worker', () => {
 				"x-auth-token": "ThisFakeTokenIsDefinedInDotEnvTest",
 			},
 		});
+		expect(response.status).toBe(200);
 		expect(await response.text()).toMatchInlineSnapshot(`"Hello World!"`);
 	});
 
