@@ -5,7 +5,7 @@ describe('Hello World worker', () => {
 	it('responds with Hello World!', async () => {
 		const response = await SELF.fetch('https://example.com', {
 			headers: {
-				"x-auth-token": "ThisFakeTokenIsDefinedInDotEnvTest",
+				'x-auth-token': 'ThisFakeTokenIsDefinedInDotEnvTest',
 			},
 		});
 		expect(response.status).toBe(200);
@@ -15,7 +15,7 @@ describe('Hello World worker', () => {
 	it('refuses a wrong token', async () => {
 		const response = await SELF.fetch('https://example.com', {
 			headers: {
-				"x-auth-token": "WrongToken",
+				'x-auth-token': 'WrongToken',
 			},
 		});
 		expect(response.status).toBe(401);
