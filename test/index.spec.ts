@@ -1,24 +1,130 @@
 import { SELF } from 'cloudflare:test';
+import { sign } from 'tweetnacl';
 import { describe, it, expect } from 'vitest';
 
-describe('Hello World worker', () => {
-	it('responds with Hello World!', async () => {
+const SEED = Buffer.from('SeedForTest234567890123456789012');
+
+const RIGHT_AUTH_TOKEN = 'ThisFakeTokenIsDefinedInDotEnvTest';
+const WRONG_AUTH_TOKEN = 'WrongToken';
+
+describe('Validate Discord Signature Worker', () => {
+	it('verifies a valid signature', async () => {
+		const body = 'text from discord';
+		const timestamp = '12345';
+		const message = timestamp + body;
+		const messageBytes = Buffer.from(message);
+
+		const keyPair = sign.keyPair.fromSeed(SEED);
+		const publicKeyHex = Buffer.from(keyPair.publicKey).toString('hex');
+		const signatureBytes = sign.detached(messageBytes, keyPair.secretKey);
+		const signatureHex = Buffer.from(signatureBytes).toString('hex');
+
 		const response = await SELF.fetch('https://example.com', {
+			method: 'POST',
 			headers: {
-				'x-auth-token': 'ThisFakeTokenIsDefinedInDotEnvTest',
+				'x-auth-token': RIGHT_AUTH_TOKEN,
+				'X-Signature-PublicKey': publicKeyHex,
+				'X-Signature-Ed25519': signatureHex,
+				'X-Signature-Timestamp': timestamp,
 			},
+			body,
 		});
+
 		expect(response.status).toBe(200);
-		expect(await response.text()).toMatchInlineSnapshot(`"Hello World!"`);
+		const respBody = await response.json();
+		expect(respBody).toHaveProperty('isValid', true);
 	});
 
-	it('refuses a wrong token', async () => {
+	it('verifies a invalid signature', async () => {
+		const body = 'text from discord';
+		const timestamp = '12345';
+		const message = timestamp + body + 'get wrong';
+		const messageBytes = Buffer.from(message);
+
+		const keyPair = sign.keyPair.fromSeed(SEED);
+		const publicKeyHex = Buffer.from(keyPair.publicKey).toString('hex');
+		const signatureBytes = sign.detached(messageBytes, keyPair.secretKey);
+		const signatureHex = Buffer.from(signatureBytes).toString('hex');
+
+		const response = await SELF.fetch('https://example.com', {
+			method: 'POST',
+			headers: {
+				'x-auth-token': RIGHT_AUTH_TOKEN,
+				'X-Signature-PublicKey': publicKeyHex,
+				'X-Signature-Ed25519': signatureHex,
+				'X-Signature-Timestamp': timestamp,
+			},
+			body,
+		});
+
+		expect(response.status).toBe(200);
+		const respBody = await response.json();
+		expect(respBody).toHaveProperty('isValid', false);
+	});
+
+	it('refuses without an auth token', async () => {
+		const response = await SELF.fetch('https://example.com', {
+			headers: {},
+		});
+		expect(response.status).toBe(401);
+		expect(await response.text()).toMatchInlineSnapshot(`"Unauthorized."`);
+	});
+
+	it('refuses without a correct auth token', async () => {
 		const response = await SELF.fetch('https://example.com', {
 			headers: {
-				'x-auth-token': 'WrongToken',
+				'x-auth-token': WRONG_AUTH_TOKEN,
 			},
 		});
 		expect(response.status).toBe(401);
 		expect(await response.text()).toMatchInlineSnapshot(`"Unauthorized."`);
+	});
+
+	it('refuses without a header "X-Signature-PublicKey"', async () => {
+		const response = await SELF.fetch('https://example.com', {
+			method: 'POST',
+			headers: {
+				'x-auth-token': RIGHT_AUTH_TOKEN,
+				// 'X-Signature-PublicKey': 'abc',
+				'X-Signature-Ed25519': 'abc',
+				'X-Signature-Timestamp': 'abc',
+			},
+			body: 'abc',
+		});
+
+		expect(response.status).toBe(400);
+		expect(await response.text()).toMatchInlineSnapshot(`"Missing header X-Signature-PublicKey."`);
+	});
+
+	it('refuses without a header "X-Signature-Ed25519"', async () => {
+		const response = await SELF.fetch('https://example.com', {
+			method: 'POST',
+			headers: {
+				'x-auth-token': RIGHT_AUTH_TOKEN,
+				'X-Signature-PublicKey': 'abc',
+				// 'X-Signature-Ed25519': 'abc',
+				'X-Signature-Timestamp': 'abc',
+			},
+			body: 'abc',
+		});
+
+		expect(response.status).toBe(400);
+		expect(await response.text()).toMatchInlineSnapshot(`"Missing header X-Signature-Ed25519."`);
+	});
+
+	it('refuses without a header "X-Signature-Timestamp"', async () => {
+		const response = await SELF.fetch('https://example.com', {
+			method: 'POST',
+			headers: {
+				'x-auth-token': RIGHT_AUTH_TOKEN,
+				'X-Signature-PublicKey': 'abc',
+				'X-Signature-Ed25519': 'abc',
+				// 'X-Signature-Timestamp': 'abc',
+			},
+			body: 'abc',
+		});
+
+		expect(response.status).toBe(400);
+		expect(await response.text()).toMatchInlineSnapshot(`"Missing header X-Signature-Timestamp."`);
 	});
 });

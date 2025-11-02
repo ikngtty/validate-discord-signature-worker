@@ -11,6 +11,12 @@
  * Learn more at https://developers.cloudflare.com/workers/
  */
 
+import { sign } from 'tweetnacl';
+
+type Ok<T> = { ok: true, value: T };
+type Err<T> = { ok: false, value: T };
+type Result<TO, TE> = Ok<TO> | Err<TE>;
+
 export default {
 	async fetch(request, env, ctx): Promise<Response> {
 		// Authorize.
@@ -20,9 +26,57 @@ export default {
 		// Separete tokens for each application is better.
 		const authToken = request.headers.get('x-auth-token');
 		if (authToken !== env.AUTH_TOKEN) {
+			// TODO: JSON body.
 			return new Response('Unauthorized.', { status: 401 });
 		}
 
-		return new Response('Hello World!');
+		// Check the request.
+		const body = await request.text();
+		const publicKeyHex = requireHeader(request, 'X-Signature-PublicKey');
+		if (!publicKeyHex.ok) {
+			return publicKeyHex.value;
+		}
+		const signatureHex = requireHeader(request, 'X-Signature-Ed25519');
+		if (!signatureHex.ok) {
+			return signatureHex.value;
+		}
+		const timestamp = requireHeader(request, 'X-Signature-Timestamp');
+		if (!timestamp.ok) {
+			return timestamp.value;
+		}
+		const message = timestamp.value + body;
+
+		console.log(message);
+		console.log(signatureHex.value);
+		console.log(publicKeyHex.value);
+
+		// Verify.
+		const isValid = sign.detached.verify(
+			Buffer.from(message),
+			Buffer.from(signatureHex.value, 'hex'),
+			Buffer.from(publicKeyHex.value, 'hex'),
+		);
+
+		// Respond.
+		// TODO: Define a response body type.
+		if (!isValid) {
+			return new Response('{"isValid":false}');
+		}
+		return new Response('{"isValid":true}');
 	},
 } satisfies ExportedHandler<Env>;
+
+function requireHeader(request: Request, key: string): Result<string, Response> {
+	const value = request.headers.get(key);
+	if (value == null || value === '') {
+		return {
+			ok: false,
+			// TODO: JSON body.
+			value: new Response(`Missing header ${key}.`, { status: 400 }),
+		};
+	}
+	return {
+		ok: true,
+		value,
+	};
+}
