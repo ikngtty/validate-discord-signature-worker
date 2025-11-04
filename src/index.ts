@@ -26,8 +26,10 @@ export default {
 		// Separete tokens for each application is better.
 		const authToken = request.headers.get('x-auth-token');
 		if (authToken !== env.AUTH_TOKEN) {
-			// TODO: JSON body.
-			return new Response('Unauthorized.', { status: 401 });
+			return new Response(
+				'{"title":"Unauthorized","detail":"Auth token is missing or invalid."}',
+				{ status: 401 },
+			);
 		}
 
 		// Check the request.
@@ -71,8 +73,10 @@ function requireHeader(request: Request, key: string): Result<string, Response> 
 	if (value == null || value === '') {
 		return {
 			ok: false,
-			// TODO: JSON body.
-			value: new Response(`Missing header ${key}.`, { status: 400 }),
+			value: new Response(
+				`{"title":"Missing Header","detail":"The header '${key}' is required but missing."}`,
+				{ status: 400 },
+			),
 		};
 	}
 	return {

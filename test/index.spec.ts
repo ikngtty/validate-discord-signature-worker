@@ -67,7 +67,9 @@ describe('Validate Discord Signature Worker', () => {
 			headers: {},
 		});
 		expect(response.status).toBe(401);
-		expect(await response.text()).toMatchInlineSnapshot(`"Unauthorized."`);
+		const respBody = await response.json();
+		expect(respBody).toHaveProperty('title', 'Unauthorized');
+		expect(respBody).toHaveProperty('detail', 'Auth token is missing or invalid.');
 	});
 
 	it('refuses without a correct auth token', async () => {
@@ -77,7 +79,9 @@ describe('Validate Discord Signature Worker', () => {
 			},
 		});
 		expect(response.status).toBe(401);
-		expect(await response.text()).toMatchInlineSnapshot(`"Unauthorized."`);
+		const respBody = await response.json();
+		expect(respBody).toHaveProperty('title', 'Unauthorized');
+		expect(respBody).toHaveProperty('detail', 'Auth token is missing or invalid.');
 	});
 
 	it('refuses without a header "X-Signature-PublicKey"', async () => {
@@ -93,7 +97,9 @@ describe('Validate Discord Signature Worker', () => {
 		});
 
 		expect(response.status).toBe(400);
-		expect(await response.text()).toMatchInlineSnapshot(`"Missing header X-Signature-PublicKey."`);
+		const respBody = await response.json();
+		expect(respBody).toHaveProperty('title', 'Missing Header');
+		expect(respBody).toHaveProperty('detail', "The header 'X-Signature-PublicKey' is required but missing.");
 	});
 
 	it('refuses without a header "X-Signature-Ed25519"', async () => {
@@ -109,7 +115,9 @@ describe('Validate Discord Signature Worker', () => {
 		});
 
 		expect(response.status).toBe(400);
-		expect(await response.text()).toMatchInlineSnapshot(`"Missing header X-Signature-Ed25519."`);
+		const respBody = await response.json();
+		expect(respBody).toHaveProperty('title', 'Missing Header');
+		expect(respBody).toHaveProperty('detail', "The header 'X-Signature-Ed25519' is required but missing.");
 	});
 
 	it('refuses without a header "X-Signature-Timestamp"', async () => {
@@ -125,6 +133,8 @@ describe('Validate Discord Signature Worker', () => {
 		});
 
 		expect(response.status).toBe(400);
-		expect(await response.text()).toMatchInlineSnapshot(`"Missing header X-Signature-Timestamp."`);
+		const respBody = await response.json();
+		expect(respBody).toHaveProperty('title', 'Missing Header');
+		expect(respBody).toHaveProperty('detail', "The header 'X-Signature-Timestamp' is required but missing.");
 	});
 });
